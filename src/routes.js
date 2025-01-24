@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { fetchMoviesPerActor,fetchActorsWithMultipleCharacters,fetchCharactersWithMultipleActors } = require('./marvelCharcatersController');
+const { fetchMoviesPerActor,fetchActorsWithMultipleCharacters,fetchCharactersWithMultipleActors } = require('./marvelCharactersController');
 const {validateActorInList} = require("./middelwares/actorValidatorMiddleware");
 
 

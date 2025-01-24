@@ -1,6 +1,6 @@
 const { movies, actors } = require('../../dataForQuestions');
 const { fetchMovieCredits } = require('./tmdbClientService');
-const {normalizeCharacterName} = require("../utils/parsingUtils");
+const { normalizeCharacterName, getRefinedCharacterName } = require("../utils/parsingUtils");
 let actorToMoviesMap = new Map();
 let characterToActorsMap = new Map();
 let actorCharacterMovieMap = new Map();
@@ -43,13 +43,12 @@ async function mapActorsAndCharacters() {
     }
 }
 
-
-
 async function findActorsWithMultipleCharacters() {
     try {
         await populateMapsIfNecessary();
 
         const result = {};
+        const ActorToCharactersCounter = {};
         for (const [actorName, movies] of actorCharacterMovieMap) {
             movies.forEach(({ characterName, movieName }) => {
                 if (!characterName) {
@@ -57,38 +56,26 @@ async function findActorsWithMultipleCharacters() {
                     return;
                 }
 
-                const normalizedCharacterName = normalizeCharacterName(characterName);
-
                 if (!result[actorName]) {
                     result[actorName] = [];
+                    ActorToCharactersCounter[actorName] = 0;
                 }
 
                 const actorCharacters = result[actorName].map(entry => entry.characterName);
 
+                const refinedCharacterName = getRefinedCharacterName(characterName, actorCharacters);
 
-                const splitNormalizedCharacterName = normalizedCharacterName
-                    .split(/ \/ | /) // Split by space or "/"
-                    .map(part => part.trim()) // Trim any extra spaces
-                    .sort();
-
-                const isContained = actorCharacters.some(existingName => {
-                    const splitExistingName = existingName
-                        .split(/ \/ | /) // Split by space or "/"
-                        .map(part => part.trim()) // Trim any extra spaces
-                        .sort();
-
-                    return splitNormalizedCharacterName.some(part => splitExistingName.includes(part));
-                });
-
-                if (normalizedCharacterName && !isContained) {
-                    result[actorName].push({ movieName, characterName: normalizedCharacterName });
+                if(!actorCharacters.some(name => name === refinedCharacterName)) {
+                    ActorToCharactersCounter[actorName]++;
                 }
+
+                result[actorName].push({ movieName, characterName: refinedCharacterName });
             });
         }
 
         const actorsWithMultipleRoles = {};
         Object.keys(result).forEach(actor => {
-            if (result[actor].length > 1) {
+            if (ActorToCharactersCounter[actor] > 1) {
                 actorsWithMultipleRoles[actor] = result[actor];
             }
         });
@@ -106,6 +93,7 @@ async function findCharactersWithMultipleActors() {
         await populateMapsIfNecessary();
 
         const characterActorMap = {};
+        const characterActorsCounter = {};
 
         for (const [actorName, movies] of actorCharacterMovieMap) {
             movies.forEach(({ characterName, movieName }) => {
@@ -114,35 +102,32 @@ async function findCharactersWithMultipleActors() {
                     return;
                 }
 
+                let characters = Object.keys(characterActorMap);
                 const normalizedCharacterName = normalizeCharacterName(characterName);
-                let keys = Object.keys(characterActorMap);
+                const refinedCharacterName = getRefinedCharacterName(normalizedCharacterName, characters);
 
-                const [partA, partB] = normalizedCharacterName.trim().split('/').map(part => part.trim());
-                let match =  keys.find(item => item.trim().includes(partA) || item.trim().includes(partB) || item.includes(normalizedCharacterName)) || normalizedCharacterName;
+                if (!characterActorMap[refinedCharacterName]) {
+                    characterActorMap[refinedCharacterName] = [];
+                    characterActorsCounter[refinedCharacterName] = 0;
+                }
 
-                if (!characterActorMap[match]) {
-                    characterActorMap[match] = [];
+                if(!characterActorMap[refinedCharacterName].some(entry => entry.actorName === actorName)) {
+                    characterActorsCounter[refinedCharacterName]++;
                 }
-                if (
-                    !characterActorMap[match].some(entry => entry.actorName === actorName)
-                ) {
-                    characterActorMap[match].push({
-                        movieName,
-                        actorName
-                    });
-                }
+
+                characterActorMap[refinedCharacterName].push({movieName, actorName});
             });
         }
 
 
         const charactersWithMultipleActors = {};
         Object.keys(characterActorMap).forEach(characterName => {
-            if (characterActorMap[characterName].length > 0) {
+            if (characterActorsCounter[characterName] > 1) {
                 charactersWithMultipleActors[characterName] = characterActorMap[characterName];
             }
         });
 
-        return normalizeAndMergeCharacterEntries(charactersWithMultipleActors);
+        return charactersWithMultipleActors;
 
     } catch (error) {
         console.error('Error fetching characters with multiple actors: ', error);
@@ -150,38 +135,8 @@ async function findCharactersWithMultipleActors() {
     }
 }
 
-function normalizeAndMergeCharacterEntries(data) {
-    const normalizedData = {};
-
-    Object.keys(data).forEach((character) => {
-        // Normalize character name by trimming spaces and sorting the parts of the name
-        const normalizedName = character.trim().replace(/\s*\/\s*/g, " / ");
-
-        if (!normalizedData[normalizedName]) {
-            normalizedData[normalizedName] = [];
-        }
-
-        // Merge movie data for the normalized character
-        data[character].forEach((movieEntry) => {
-            // Check if the movie-actor combination already exists for the character
-            const existingMovie = normalizedData[normalizedName].find(
-                (entry) => entry.actorName === movieEntry.actorName && entry.movieName === movieEntry.movieName
-            );
-
-            // If the movie-actor combination doesn't exist, add it
-            if (!existingMovie) {
-                normalizedData[normalizedName].push(movieEntry);
-            }
-        });
-    });
-
-    return normalizedData;
-}
-
-
-
 async function populateMapsIfNecessary() {
-    if (Object.keys(characterToActorsMap).length === 0 && Object.keys(actorToMoviesMap).length === 0) {
+    if (characterToActorsMap.size === 0 && actorToMoviesMap.size === 0) {
         console.log("Populating actor and character maps...");
         await mapActorsAndCharacters();
     }

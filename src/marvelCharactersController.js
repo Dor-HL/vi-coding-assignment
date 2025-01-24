@@ -19,7 +19,8 @@ async function fetchMoviesPerActor(actorName) {
 
 async function fetchActorsWithMultipleCharacters() {
     try {
-        return findActorsWithMultipleCharacters();
+        console.log(`Fetching actors with several characters`);
+        return await findActorsWithMultipleCharacters();
 
     } catch (error) {
         console.error('Error fetching actors with multiple characters: ', error);
