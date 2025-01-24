@@ -1,3 +1,5 @@
+
+
 function normalizeCharacterName(characterName) {
     if (!characterName) {
         return '';

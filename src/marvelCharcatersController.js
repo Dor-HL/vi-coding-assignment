@@ -1,4 +1,4 @@
-const {findActorsWithMultipleCharacters, fetchActorToMoviesMap} = require("./services/movieDataProcessor");
+const {findActorsWithMultipleCharacters, fetchActorToMoviesMap, findCharactersWithMultipleActors} = require("./services/movieDataProcessor");
 
 
 
@@ -31,6 +31,7 @@ async function fetchActorsWithMultipleCharacters() {
 async function fetchCharactersWithMultipleActors() {
     try {
         console.log(`Fetching Characters with several actors`);
+        return await findCharactersWithMultipleActors()
     } catch (error) {
         console.error('Error fetching characters with multiple actors: ', error);
         throw new Error(error);

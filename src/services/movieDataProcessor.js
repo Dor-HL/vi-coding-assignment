@@ -101,6 +101,83 @@ async function findActorsWithMultipleCharacters() {
     }
 }
 
+async function findCharactersWithMultipleActors() {
+    try {
+        await populateMapsIfNecessary();
+
+        const characterActorMap = {};
+
+        for (const [actorName, movies] of actorCharacterMovieMap) {
+            movies.forEach(({ characterName, movieName }) => {
+                if (!characterName) {
+                    console.warn(`Skipping entry for ${actorName} in movie ${movieName} due to missing character name.`);
+                    return;
+                }
+
+                const normalizedCharacterName = normalizeCharacterName(characterName);
+                let keys = Object.keys(characterActorMap);
+
+                const [partA, partB] = normalizedCharacterName.trim().split('/').map(part => part.trim());
+                let match =  keys.find(item => item.trim().includes(partA) || item.trim().includes(partB) || item.includes(normalizedCharacterName)) || normalizedCharacterName;
+
+                if (!characterActorMap[match]) {
+                    characterActorMap[match] = [];
+                }
+                if (
+                    !characterActorMap[match].some(entry => entry.actorName === actorName)
+                ) {
+                    characterActorMap[match].push({
+                        movieName,
+                        actorName
+                    });
+                }
+            });
+        }
+
+
+        const charactersWithMultipleActors = {};
+        Object.keys(characterActorMap).forEach(characterName => {
+            if (characterActorMap[characterName].length > 0) {
+                charactersWithMultipleActors[characterName] = characterActorMap[characterName];
+            }
+        });
+
+        return normalizeAndMergeCharacterEntries(charactersWithMultipleActors);
+
+    } catch (error) {
+        console.error('Error fetching characters with multiple actors: ', error);
+        throw new Error(error);
+    }
+}
+
+function normalizeAndMergeCharacterEntries(data) {
+    const normalizedData = {};
+
+    Object.keys(data).forEach((character) => {
+        // Normalize character name by trimming spaces and sorting the parts of the name
+        const normalizedName = character.trim().replace(/\s*\/\s*/g, " / ");
+
+        if (!normalizedData[normalizedName]) {
+            normalizedData[normalizedName] = [];
+        }
+
+        // Merge movie data for the normalized character
+        data[character].forEach((movieEntry) => {
+            // Check if the movie-actor combination already exists for the character
+            const existingMovie = normalizedData[normalizedName].find(
+                (entry) => entry.actorName === movieEntry.actorName && entry.movieName === movieEntry.movieName
+            );
+
+            // If the movie-actor combination doesn't exist, add it
+            if (!existingMovie) {
+                normalizedData[normalizedName].push(movieEntry);
+            }
+        });
+    });
+
+    return normalizedData;
+}
+
 
 
 async function populateMapsIfNecessary() {
@@ -116,4 +193,4 @@ async function fetchActorToMoviesMap() {
 }
 
 
-module.exports = {fetchActorToMoviesMap, findActorsWithMultipleCharacters};
+module.exports = {fetchActorToMoviesMap, findActorsWithMultipleCharacters, findCharactersWithMultipleActors};
