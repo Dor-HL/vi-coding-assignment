@@ -1,5 +1,6 @@
 const { movies, actors } = require('../../dataForQuestions');
-const { fetchMovieCredits } = require('../tmdbClient');
+const { fetchMovieCredits } = require('./tmdbClientService');
+const {normalizeCharacterName} = require("../utils/parsingUtils");
 let actorToMoviesMap = new Map();
 let characterToActorsMap = new Map();
 let actorCharacterMovieMap = new Map();
@@ -49,17 +50,38 @@ async function findActorsWithMultipleCharacters() {
         await populateMapsIfNecessary();
 
         const result = {};
+        for (const [actorName, movies] of actorCharacterMovieMap) {
+            movies.forEach(({ characterName, movieName }) => {
+                if (!characterName) {
+                    console.warn(`Skipping entry for ${actorName} in movie ${movieName} due to missing character name.`);
+                    return;
+                }
 
-        for (const [actorName, movieCharacterData] of actorCharacterMovieMap) {
-            movieCharacterData.forEach(({ movieName, characterName }) => {
+                const normalizedCharacterName = normalizeCharacterName(characterName);
+
                 if (!result[actorName]) {
                     result[actorName] = [];
                 }
 
                 const actorCharacters = result[actorName].map(entry => entry.characterName);
 
-                if (!actorCharacters.includes(characterName)) {
-                    result[actorName].push({ movieName, characterName });
+
+                const splitNormalizedCharacterName = normalizedCharacterName
+                    .split(/ \/ | /) // Split by space or "/"
+                    .map(part => part.trim()) // Trim any extra spaces
+                    .sort();
+
+                const isContained = actorCharacters.some(existingName => {
+                    const splitExistingName = existingName
+                        .split(/ \/ | /) // Split by space or "/"
+                        .map(part => part.trim()) // Trim any extra spaces
+                        .sort();
+
+                    return splitNormalizedCharacterName.some(part => splitExistingName.includes(part));
+                });
+
+                if (normalizedCharacterName && !isContained) {
+                    result[actorName].push({ movieName, characterName: normalizedCharacterName });
                 }
             });
         }
@@ -73,12 +95,13 @@ async function findActorsWithMultipleCharacters() {
 
         return actorsWithMultipleRoles;
 
-
     } catch (error) {
         console.error('Error fetching actors with multiple characters: ', error);
         throw new Error(error);
     }
 }
+
+
 
 async function populateMapsIfNecessary() {
     if (Object.keys(characterToActorsMap).length === 0 && Object.keys(actorToMoviesMap).length === 0) {

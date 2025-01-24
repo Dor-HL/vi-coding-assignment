@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { fetchMoviesPerActor,fetchActorsWithMultipleCharacters,fetchCharactersWithMultipleActors } = require('./marvelCharcatersController');
+const {validateActorInList} = require("./middelwares/actorValidatorMiddleware");
 
 
-router.get('/moviesPerActor', async (req, res) => {
+router.get('/moviesPerActor', validateActorInList, async (req, res) => {
     const { actorName } = req.query;
-    if (!actorName) {
-        return res.status(400).send({ error: 'Actor name is required' });
-    }
-
     try {
         const movies = await fetchMoviesPerActor(actorName);
         res.json({ [actorName]: movies });
