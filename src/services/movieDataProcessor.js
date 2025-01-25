@@ -1,6 +1,7 @@
 const { movies, actors } = require('../../dataForQuestions');
 const { fetchMovieCredits } = require('./tmdbClientService');
 const { normalizeCharacterName, getRefinedCharacterName } = require("../utils/parsingUtils");
+
 let actorToMoviesMap = new Map();
 let characterToActorsMap = new Map();
 let actorCharacterMovieMap = new Map();
@@ -38,7 +39,7 @@ async function mapActorsAndCharacters() {
             });
         } catch (error) {
             console.error(`Error processing movie "${movieTitle}" with ID: ${movieId}:`, error.message);
-            throw new Error(error);
+            throw error;
         }
     }
 }
@@ -84,7 +85,7 @@ async function findActorsWithMultipleCharacters() {
 
     } catch (error) {
         console.error('Error fetching actors with multiple characters: ', error);
-        throw new Error(error);
+        throw error;
     }
 }
 
@@ -131,7 +132,7 @@ async function findCharactersWithMultipleActors() {
 
     } catch (error) {
         console.error('Error fetching characters with multiple actors: ', error);
-        throw new Error(error);
+        throw error;
     }
 }
 
@@ -147,5 +148,20 @@ async function fetchActorToMoviesMap() {
     return actorToMoviesMap;
 }
 
+async function fetchCharacterToActorsMap() {
+    await populateMapsIfNecessary();
+    return characterToActorsMap;
+}
 
-module.exports = {fetchActorToMoviesMap, findActorsWithMultipleCharacters, findCharactersWithMultipleActors};
+async function fetchActorCharacterMovieMap() {
+    await populateMapsIfNecessary();
+    return actorCharacterMovieMap;
+}
+
+function clearInMemoryMaps() {
+    actorToMoviesMap.clear();
+    characterToActorsMap.clear();
+    actorCharacterMovieMap.clear()
+}
+
+module.exports = {fetchActorToMoviesMap, findActorsWithMultipleCharacters, findCharactersWithMultipleActors, mapActorsAndCharacters, fetchCharacterToActorsMap, fetchActorCharacterMovieMap, clearInMemoryMaps};

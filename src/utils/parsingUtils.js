@@ -39,4 +39,4 @@ function isSingleWord(str) {
     return !/\s/.test(str);
 }
 
-module.exports = { normalizeCharacterName, getRefinedCharacterName };
+module.exports = { normalizeCharacterName, getRefinedCharacterName, isSingleWord };
