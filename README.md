@@ -7,7 +7,9 @@ The server can fetch all movies for a specific actor, provide necessary informat
 
 ## Tools
 - Jest for testing
-- __List additional tools you used...__
+- dotenv for secrets handling
+- express.js
+- axios for http requests
 
 ## Getting Started
 
@@ -29,11 +31,21 @@ yarn test
 
 ### How to use
 
-1.Please run 
+1. __Add a .env file to your root project with__
 ```shell
-npm install express
+TMDB_API_KEY=<your api key>
 ```
-run the server.js file to start the application.
+
+2. Please run 
+```shell
+npm i
+```
+3.run the server.js file to start the application
+From root of project write the following command in terminal:
+
+```shell
+node src/server.js
+```
 
 ## Endpoints:
 All the routes begin with /api/v1/marvel/
@@ -110,11 +122,27 @@ __
 
 
 
-### Worth mentioning
+## Worth mentioning
 __VMA in the commits stands for Vi-Marvel-Assignment.__
-## Middlewares added:
+Several things I would do in a real-life application/ if I had more time:
+- Use Aws secrets manager to maintain secrets such as TMBD_API_KEY inseatd of the .env file also adding awsSecretsManagerService to the code to fetch/store secrets.
+- 
+
+### Middlewares added:
 1.actorValidatorMiddleware - validates that the actorName sent in the 1st endpoint is in the provided list within dataForQuestions.js and prevents unnecessary calls when the actor doesnt even exist.
 
-## Funny side notes
+### Data Aggregation and Normalization:
+For the usage of the APIs requiring finding multiple actors for character as well as multiple character for a single actor, I came across an issue where there was a lack of format in character names within different movies - for example "Tony Stark" and "Tony Stark / Iron man" are the same character.
+To handle that I had to change how I process the data and normalize the  character names.
+I used a few rules:
+- All words within a name will begin with a capital letter - to avoid duplicates due to case sensitivty
+- I ignored the redundant(at the beginning or end of names) blank spaces within names.
+- I split by "/" and sort the words to preserve the same order to avoid duplications such as "Tony Stark / Iron Man" and "Iron Man/ Tony Stark"
+- I avoided normalization of single worded names such as Loki to prevent issues like  "Loki" and  "Loki as Captain America" being recognized as same character.
+- I added an exclude list for a specific case of James Rhodes (War Machine) who had several titels in his name such as "Lt.", "Rhodney" etc etc. I would have liked to avoid this however there seems to be no naming rules for the character names - in a real world application - I would probably have a DB with known Aliases for the charcaters to avoid such lists.
+
+
+
+### Funny side notes
 1. for some reason poor Zoe Saldana is not returned from the credits api as an actor in guardians of the galaxy movies :(((
 2. Edward Norton played the hulk before mark ruffalo however he is not in the list of actors provided in the assignment
